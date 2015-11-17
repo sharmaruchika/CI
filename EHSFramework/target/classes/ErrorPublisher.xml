@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:mulexml="http://www.mulesoft.org/schema/mule/xml"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:jbossts="http://www.mulesoft.org/schema/mule/jbossts" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:context="http://www.springframework.org/schema/context"  version="CE-3.7.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/current/mule-xml.xsd
+http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/jbossts http://www.mulesoft.org/schema/mule/jbossts/current/mule-jbossts.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+    
+    <!-- <context:property-placeholder location="../resources/dev.properties"/> -->
+    
+    <flow name="ErrorPublisher">
+        <jms:inbound-endpoint queue="${JMSErrorRequestQueue}" connector-ref="Web_logic_JMS" doc:name="Receive_ErrorMessageRequest">
+            <xa-transaction action="NONE"/>
+        </jms:inbound-endpoint>
+        <set-variable variableName="InputPayload" value="#[payload]" doc:name="SetVariable_InputPayload"/>
+        <set-variable variableName="instancePayload" value="#[xpath3('//*[local-name() =\'Payload\']/text()')]" doc:name="SetVariable_Payload"/>
+        <set-variable variableName="interfaceName" value="#[xpath3('//*[local-name() =\'InterfaceName\']/text()')]" doc:name="SetVariable_InterfaceName"/>
+        <set-variable variableName="errorCode" value="#[xpath3('//*[local-name() =\'ErrorCode\']/text()')]" doc:name="SetVariable_ErrorCode"/>
+        <flow-ref name="SetSequenceID" doc:name="SetSequenceID"/>
+        <db:insert config-ref="Oracle_Configuration" doc:name="Database_InsertErrorToRepo">
+            <db:parameterized-query><![CDATA[Insert all INTO Error_Repository_tbl (SEQID, INTERFACENAME, SENDER, TARGET, VERBCODE, ERRORCODE, ERRORMSG, SEVERITY, TRANSACTIONID, MESSAGEID, MESSAGENAME, BUSINESSOBJECTID, REQUESTID, PROCESSINSTANCEID, IMPLEMENTATIONCODE, ERRORREPORTINGDATETIME, EXTRAINFO1, EXTRAINFO2, EXTRAINFO3, EXTRAINFO4, CREATEDONDATETIME) values (#[flowVars['SeqID']], #[xpath3('//*[local-name() =\'InterfaceName\']/text()')],#[xpath3('//*[local-name() =\'Sender\']/text()')],#[xpath3('//*[local-name() =\'Target\']/text()')],#[xpath3('//*[local-name() =\'VerbCode\']/text()')],#[xpath3('//*[local-name() =\'ErrorCode\']/text()')],#[xpath3('//*[local-name() =\'ErrorMsg\']/text()')],#[xpath3('//*[local-name() =\'Severity\']/text()')],#[xpath3('//*[local-name() =\'TransactionID\']/text()')],#[xpath3('//*[local-name() =\'MessageID\']/text()')],#[xpath3('//*[local-name() =\'MessageName\']/text()')],#[xpath3('//*[local-name() =\'BusinessObjectID\']/text()')],#[xpath3('//*[local-name() =\'RequestID\']/text()')],#[xpath3('//*[local-name() =\'ProcessInstanceID\']/text()')],#[xpath3('//*[local-name() =\'ImplementationCode\']/text()')],(SELECT  CAST(TO_TIMESTAMP_TZ(REPLACE(#[xpath3('//*[local-name() =\'ReportingDateTime\']/text()')], 'T', ''), 'YYYY-MM-DD HH24:MI:SS.FF3TZH:TZM') AS DATE)
+FROM    dual), #[xpath3('//*[local-name() =\'ExtraInfo1\']/text()')],#[xpath3('//*[local-name() =\'ExtraInfo2\']/text()')],#[xpath3('//*[local-name() =\'ExtraInfo3\']/text()')],#[xpath3('//*[local-name() =\'ExtraInfo4\']/text()')],(SELECT  CAST(TO_TIMESTAMP_TZ(REPLACE(#[xpath3('//*[local-name() =\'CreationDateTime\']/text()')], 'T', ''), 'YYYY-MM-DD HH24:MI:SS.FF3') AS DATE)
+FROM    dual)
+)
+into error_data_tbl (SEQID, Stacktrace, Payload) values (#[flowVars['SeqID']], #[xpath3('//*[local-name() =\'StackTrace\']/text()')], #[xpath3('//*[local-name() =\'Payload\']/text()')]) select * from dual]]></db:parameterized-query>
+        </db:insert>
+        <flow-ref name="Checking_Error_Configuration" doc:name="Checking_Error_Configuration"/>
+        <choice doc:name="Choice">
+            <when expression="#[flowVars['countErrorConfig']=='1']">
+                <db:select config-ref="Oracle_Configuration" doc:name="Database_GetErrorConfiguration">
+                    <db:parameterized-query><![CDATA[select * from ERROR_CONFIGURATION_TBL where INTERFACENAME=#[flowVars['interfaceName']] AND ERRORCODE=#[flowVars['errorCode']]]]></db:parameterized-query>
+                </db:select>
+                <json:object-to-json-transformer doc:name="Object to JSON"/>
+                <set-payload value="{&quot;root&quot; : #[payload]}" doc:name="Set Payload"/>
+                <json:json-to-xml-transformer doc:name="JSON to XML"/>
+                <set-variable variableName="payload" value="#[payload]" doc:name="SetVariable_payload"/>
+                <choice doc:name="Choice_CheckErrorSendEnabledFlag">
+                    <when expression="#[xpath3('//*[local-name() =\'ERRORSEND_ENABLED\']/text()')=='Y']">
+                        <choice doc:name="Choice_CheckEmailDigestionFlag">
+                            <when expression="#[xpath3('//*[local-name() =\'EMAILDIGESTIONFLAG\']/text()')=='N']">
+                                <flow-ref name="sendEmail" doc:name="sendEmail"/>
+                            </when>
+                            <when expression="#[xpath3('//*[local-name() =\'EMAILDIGESTIONFLAG\']/text()')=='Y']">
+                                <flow-ref name="SetEmailDigestionFlag" doc:name="SetEmailDigestionFlag"/>
+                                <choice doc:name="Choice_CheckEmailDigestionDuration">
+                                    <when expression="#[flowVars['flag']=='1']">
+                                        <set-payload value="#[flowVars['payload']]" doc:name="SetEmailPayload"/>
+                                        <flow-ref name="sendEmail" doc:name="sendEmail"/>
+                                    </when>
+                                    <otherwise>
+                                        <flow-ref name="updateErrorRepo" doc:name="updateErrorRepo"/>
+                                    </otherwise>
+                                </choice>
+                            </when>
+                            <otherwise>
+                                <flow-ref name="updateErrorRepo" doc:name="updateErrorRepo"/>
+                            </otherwise>
+                        </choice>
+                    </when>
+                    <otherwise>
+                        <flow-ref name="updateErrorRepo" doc:name="updateErrorRepo"/>
+                    </otherwise>
+                </choice>
+            </when>
+            <otherwise>
+                <flow-ref name="updateErrorRepo" doc:name="updateErrorRepo"/>
+            </otherwise>
+        </choice>
+        <catch-exception-strategy doc:name="Catch Exception Strategy">
+            <set-attachment attachmentName="RequestMessage.txt" value="#[flowVars['instancePayload']]" contentType="text/plain" doc:name="Attachment_Payload"/>
+            <set-payload value="Error Occured in Error Handling Service. PFA the request." doc:name="Set Payload"/>
+            <smtp:outbound-endpoint host="${smtpHost}" to="${smtpTo}" from="${smtpFrom}" subject="Error Occured in EHS ErrorPublisherService" responseTimeout="10000" doc:name="SMTP" connector-ref="SMTP"/>
+        </catch-exception-strategy>
+    </flow>
+    <sub-flow name="updateErrorRepo">
+        <db:update config-ref="Oracle_Configuration" doc:name="Database_UpdateErrorRepo">
+            <db:parameterized-query><![CDATA[update error_repository_tbl set EMAILSENT='N' where seqid  = #[flowVars['SeqID']]]]></db:parameterized-query>
+        </db:update>
+        <logger message="Error Repository Updated, Email not sent" level="INFO" doc:name="Logger"/>
+    </sub-flow>
+    <sub-flow name="Checking_Error_Configuration">
+        <db:select config-ref="Oracle_Configuration" doc:name="Database">
+            <db:parameterized-query><![CDATA[select count(*) as countError from ERROR_CONFIGURATION_TBL where INTERFACENAME=#[flowVars['interfaceName']] AND ERRORCODE=#[flowVars['errorCode']]]]></db:parameterized-query>
+        </db:select>
+        <json:object-to-json-transformer doc:name="Object to JSON"/>
+        <set-payload value="{&quot;root&quot; : #[payload]}" doc:name="Set Payload"/>
+        <json:json-to-xml-transformer doc:name="JSON to XML"/>
+        <set-variable variableName="countErrorConfig" value="#[xpath3('//*[local-name() =\'COUNTERROR\']/text()')]" doc:name="SetVariable_Count_Error_Config"/>
+    </sub-flow>
+    <sub-flow name="sendEmail">
+        <set-attachment attachmentName="InstancePayload.txt" value="#[flowVars['instancePayload']]" contentType="text/plain" doc:name="Attachment_Payload"/>
+        <smtp:outbound-endpoint host="${smtpHost}" connector-ref="SMTP" to="#[xpath3('//*[local-name() =\'EMAILTO\']/text()')]" from="${smtpFrom}" subject="#[xpath3('//*[local-name() =\'EMAILSUBJECT\']/text()')]" responseTimeout="10000" doc:name="SMTP_SendEmail"/>
+        <db:update config-ref="Oracle_Configuration" doc:name="Database_UpdateErrorConfig">
+            <db:parameterized-query><![CDATA[update ERROR_CONFIGURATION_TBL SET EMAILSENTDATETIME=SYSDATE  where INTERFACENAME=#[flowVars['interfaceName']] AND ERRORCODE=#[flowVars['errorCode']]]]></db:parameterized-query>
+        </db:update>
+        <db:update config-ref="Oracle_Configuration" doc:name="Database_UpdateErrorRepository">
+            <db:parameterized-query><![CDATA[update error_repository_tbl set EMAILSENT='Y' where seqid = #[flowVars['SeqID']]]]></db:parameterized-query>
+        </db:update>
+        <logger message="Email Sent" level="INFO" doc:name="Logger"/>
+    </sub-flow>
+    <sub-flow name="SetSequenceID">
+        <db:select config-ref="Oracle_Configuration" doc:name="Database_GenerateSeqID">
+            <db:parameterized-query><![CDATA[SELECT seq_error_repo.nextval as SeqID from dual]]></db:parameterized-query>
+        </db:select>
+        <json:object-to-json-transformer doc:name="Object to JSON"/>
+        <set-payload value="{&quot;root&quot; : #[payload]}" doc:name="Set Payload"/>
+        <json:json-to-xml-transformer doc:name="JSON to XML"/>
+        <set-variable variableName="SeqID" value="#[xpath3('//*[local-name() =\'SEQID\']/text()')]" doc:name="SetVariable_SeqID"/>
+        <set-payload value="#[flowVars['InputPayload']]" doc:name="Set Payload"/>
+    </sub-flow>
+    <sub-flow name="SetEmailDigestionFlag">
+        <db:select config-ref="Oracle_Configuration" doc:name="Database_SetEmailDigestionFlag">
+            <db:parameterized-query><![CDATA[select count(*) as flag FROM error_configuration_tbl where sysdate > (select (EMAILSENTDATETIME+(EMAILDIGESTIONDURATION/1440)) FROM error_configuration_tbl where interfacename=#[flowVars['interfaceName']] and ERRORCODE=#[flowVars['errorCode']])]]></db:parameterized-query>
+        </db:select>
+        <json:object-to-json-transformer doc:name="Object to JSON"/>
+        <set-payload value="{&quot;root&quot; : #[payload]}" doc:name="Set Payload"/>
+        <json:json-to-xml-transformer doc:name="JSON to XML"/>
+        <set-variable variableName="flag" value="#[xpath3('//*[local-name() =\'FLAG\']/text()')]" doc:name="SetVariable_Flag"/>
+    </sub-flow>
+</mule>

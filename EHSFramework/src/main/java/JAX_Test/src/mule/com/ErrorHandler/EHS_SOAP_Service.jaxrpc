@@ -1,0 +1,112 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<jdevws:WebService xmlns:jdevws="http://xmlns.oracle.com/jdeveloper/10130/webservice">
+   <list n="CHILD_NODES">
+      <url path="../../../../public_html/WEB-INF/wsdl/SOAP_CXF_WSDL.wsdl"/>
+      <url path="types/FaultSchemaType.java"/>
+      <url path="types/FaultNotification.java"/>
+      <url path="types/FaultMessage.java"/>
+      <url path="types/ObjectFactory.java"/>
+      <url path="types/package-info.java"/>
+      <url path="types/Header.java"/>
+      <url path="types/FaultService.java"/>
+      <url path="ErrorHandlerPortTypeImpl.java"/>
+   </list>
+   <hash n="DATA_MODEL">
+      <value n="ATTACHMENT_ENCODING" v="MTOM"/>
+      <list n="BD_">
+         <hash>
+            <value n="BD_DEFAULT_DOCUMENT_WRAPPED" v="false"/>
+            <value n="BD_SOAP_VERSION" v="1.2"/>
+            <value n="BOUND_PORT_TYPE" v="{USE_OWNER_TNS}ErrorHandlerPortType"/>
+            <value n="DEFAULT_NAME" v="false"/>
+            <value n="MODEL_CLASS" v="oracle.jdeveloper.webservices.model.SOAPBinding"/>
+            <value n="NAME" v="{xmlns.services.errorhandler/FaultSchema.xsd}ErrorHandlerPortTypeSOAP12Binding"/>
+            <list n="OP_BINDINGS">
+               <hash>
+                  <value n="BD_DOCUMENT_WRAPPED" v="false"/>
+                  <value n="BD_SOAP_ACTION" v="xmlns.services.errorhandler/FaultSchema.xsd/consumeMsg"/>
+                  <value n="BD_WSDL_RETURN_NAME" v="consumeMsgResponse"/>
+                  <value n="BD_WSDL_RETURN_TNS" v="USE_OWNER_TNS"/>
+                  <value n="BOUND_OPERATION" v="void.consumeMsg.javax.xml.ws.Holder&lt;mule.com.ErrorHandler.types.FaultSchemaType>"/>
+                  <value n="MODEL_CLASS" v="oracle.jdeveloper.webservices.model.SOAPOperationBinding"/>
+                  <hash n="PROPERTY_GROUPS"/>
+               </hash>
+            </list>
+            <hash n="PROPERTY_GROUPS"/>
+         </hash>
+      </list>
+      <list n="BINDING_FILES"/>
+      <value n="GENERATION_OPTION" v="ANNOTATIONS_WSDL"/>
+      <value n="GUID" v="f84ad21b-014e-1000-8001-ac124f8aae78"/>
+      <value n="MODEL_CLASS" v="oracle.jdeveloper.webservices.model.java.JavaWebService"/>
+      <list n="PO_">
+         <hash>
+            <value n="DEFAULT_NAME" v="false"/>
+            <value n="MODEL_CLASS" v="oracle.jdeveloper.webservices.model.SOAPPort"/>
+            <value n="NAME" v="ErrorHandlerPort"/>
+            <value n="PORT_BINDING_NAME" v="{xmlns.services.errorhandler/FaultSchema.xsd}ErrorHandlerPortTypeSOAP12Binding"/>
+            <list n="PORT_OPS">
+               <hash>
+                  <value n="EXPOSED_BD_OPERATION" v="void.consumeMsg.javax.xml.ws.Holder&lt;mule.com.ErrorHandler.types.FaultSchemaType>"/>
+                  <value n="MODEL_CLASS" v="oracle.jdeveloper.webservices.model.PortOperation"/>
+                  <hash n="PROPERTY_GROUPS"/>
+               </hash>
+            </list>
+            <hash n="PROPERTY_GROUPS"/>
+            <url n="URL" protocol="http" host="localhost" port="8081" path="/EHSSoapService"/>
+         </hash>
+      </list>
+      <hash n="PROPERTY_GROUPS">
+         <hash n="WSDL_TO_JAVA_PROPERTIES">
+            <value n="MODEL_CLASS" v="oracle.jdeveloper.webservices.model.java.WSDLToJavaProperties"/>
+            <value n="WSDL2JAVA_DEFAULT_PACKAGE" v="mule.com.ErrorHandler"/>
+            <value n="WSDL2JAVA_ROOT_VALUE_PACKAGE" v="mule.com.ErrorHandler.types"/>
+            <value n="WSDL2JAVA_UNWRAP_PARAMETERS" v="false"/>
+         </hash>
+      </hash>
+      <list n="PT_">
+         <hash>
+            <value n="AUTO_SERVICE_INTERFACE"/>
+            <value n="DEFAULT_NAME" v="false"/>
+            <value n="MODEL_CLASS" v="oracle.jdeveloper.webservices.model.java.JavaPortType"/>
+            <value n="NAME" v="{USE_OWNER_TNS}ErrorHandlerPortType"/>
+            <list n="OP_">
+               <hash>
+                  <value n="MODEL_CLASS" v="oracle.jdeveloper.webservices.model.java.JavaOperation"/>
+                  <value n="OP_JAVA_NAME" v="consumeMsg"/>
+                  <list n="OP_JAVA_PARAMETERS">
+                     <hash>
+                        <value n="MODEL_CLASS" v="oracle.jdeveloper.webservices.model.java.JavaParameter"/>
+                        <value n="NAME" v="payload"/>
+                        <value n="PA_MODE" v="2"/>
+                        <value n="PA_WSDL_NAME" v="FaultSchema"/>
+                        <value n="PA_WSDL_PART_NAME" v="payload"/>
+                        <value n="TARGET_NAMESPACE" v="USE_OWNER_TNS"/>
+                        <value n="TYPE" v="javax.xml.ws.Holder&lt;mule.com.ErrorHandler.types.FaultSchemaType>"/>
+                     </hash>
+                  </list>
+                  <value n="OP_JAVA_RETURN_TYPE" v="void"/>
+                  <value n="OP_NAME" v="consumeMsg"/>
+                  <value n="OP_ONE_WAY_OPERATION" v="false"/>
+                  <hash n="PROPERTY_GROUPS"/>
+               </hash>
+            </list>
+            <hash n="PROPERTY_GROUPS"/>
+            <value n="PT_CLASS" v="mule.com.ErrorHandler.ErrorHandlerPortTypeImpl"/>
+         </hash>
+      </list>
+      <value n="SERVICE_ASYNC" v="false"/>
+      <url n="TARGET_PROJECT" path="../../../../JAX_Test.jpr"/>
+      <value n="TOPDOWN_GENERATION_OPTION" v="JAVA"/>
+      <value n="WS_CREATE_ONEWAY_OPERATIONS" v="true"/>
+      <list n="WS_DEPENDENT_VALUE_TYPES"/>
+      <value n="WS_ORIG_GEN_DIRECTION" v="TOP_DOWN"/>
+      <url n="WS_REFERENCE_WSDL" path="../../../../public_html/WEB-INF/wsdl/SOAP_CXF_WSDL.wsdl"/>
+      <value n="WS_TARGET_NAMESPACE" v="xmlns.services.errorhandler/FaultSchema.xsd"/>
+      <value n="WS_URI" v="EHS_SOAP_Service"/>
+      <url n="WS_WSDL_FILE" path="../../../../public_html/WEB-INF/wsdl/SOAP_CXF_WSDL.wsdl"/>
+      <value n="WS_WSDL_LOC_ON_SEI" v="false"/>
+      <value n="WS_WSDL_LOC_VALUE" v="/WEB-INF/wsdl/SOAP_CXF_WSDL.wsdl"/>
+      <value n="WS_WSDL_LOCATION" v="/C:/JDeveloper/mywork/JAX-WS_Test/JAX_Test/public_html/WEB-INF/wsdl/"/>
+   </hash>
+</jdevws:WebService>

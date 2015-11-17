@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.w3.org/2001/XMLSchema" xmlns:fault="xmlns.services.errorhandler/FaultSchema.xsd" targetNamespace="xmlns.services.errorhandler/FaultSchema.xsd" elementFormDefault="qualified">
+<xsd:element name="FaultNotification">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ReportingDateTime" type="dateTime" minOccurs="0"/>
+<xsd:element name="CorrectiveAction" type="string" minOccurs="0"/>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="FaultMessage">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ErrorCode" type="string" minOccurs="0"/>
+<xsd:element name="ErrorMsg" type="string" minOccurs="0"/>
+<xsd:element name="Severity" type="string" minOccurs="0"/>
+<xsd:element name="StackTrace" type="string" minOccurs="0"/>
+<xsd:element name="Payload" type="string" minOccurs="0"/>
+<xsd:element name="ExtraInfo1" type="string" minOccurs="0"/>
+<xsd:element name="ExtraInfo2" type="string" minOccurs="0"/>
+<xsd:element name="ExtraInfo3" type="string" minOccurs="0"/>
+<xsd:element name="ExtraInfo4" type="string" minOccurs="0"/>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="FaultService">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="TransactionID" type="string" minOccurs="0"/>
+<xsd:element name="ImplementationCode" type="string" minOccurs="0"/>
+<xsd:element name="ProcessInstanceID" type="string" minOccurs="0"/>
+<xsd:element name="InterfaceName" type="string" minOccurs="0"/>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="Header">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="MessageID" type="string" minOccurs="0"/>
+<xsd:element name="MessageName" type="string" minOccurs="0"/>
+<xsd:element name="BusinessObjectID" type="string" minOccurs="0"/>
+<xsd:element name="CreationDateTime" type="dateTime" minOccurs="0"/>
+<xsd:element name="RequestID" type="string" minOccurs="0"/>
+<xsd:element name="VerbCode" type="string" minOccurs="0"/>
+<xsd:element name="Sender" type="string" minOccurs="0"/>
+<xsd:element name="Target" type="string" minOccurs="0"/>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="FaultSchema" type="fault:FaultSchemaType"/>
+<xsd:complexType name="FaultSchemaType">
+<xsd:sequence>
+<xsd:element ref="fault:Header" minOccurs="0"/>
+<xsd:element ref="fault:FaultService" minOccurs="0"/>
+<xsd:element ref="fault:FaultMessage" minOccurs="0"/>
+<xsd:element ref="fault:FaultNotification" minOccurs="0"/>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:schema>

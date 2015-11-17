@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<definitions targetNamespace="xmlns.services.errorhandler/FaultSchema.xsd"
+             xmlns="http://schemas.xmlsoap.org/wsdl/"
+             xmlns:tns="xmlns.services.errorhandler/FaultSchema.xsd"
+             xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+             xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+             xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/"
+             xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/">
+  <types>
+    <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+                <xsd:import namespace="xmlns.services.errorhandler/FaultSchema.xsd" schemaLocation="FaultSchema.xsd" />
+                </xsd:schema>
+  </types>
+  <message name="RequestMsg">
+    <part name="payload" element="tns:FaultSchema"/>
+  </message>
+  <message name="ResponseMsg">
+    <part name="payload" element="tns:FaultSchema"/>
+  </message>
+  <portType name="ErrorHandlerPortType">
+    <operation name="consumeMsg">
+      <input message="tns:RequestMsg"/>
+      <output message="tns:ResponseMsg"/>
+    </operation>
+  </portType>
+  <binding name="ErrorHandlerPortTypeSOAP12Binding"
+           type="tns:ErrorHandlerPortType">
+    <soap12:binding style="document"
+                    transport="http://schemas.xmlsoap.org/soap/http"/>
+    <operation name="consumeMsg">
+      <soap12:operation style="document"
+                        soapAction="xmlns.services.errorhandler/FaultSchema.xsd/consumeMsg"/>
+      <input>
+        <soap12:body use="literal" parts="payload"/>
+      </input>
+      <output>
+        <soap12:body use="literal" parts="payload"/>
+      </output>
+    </operation>
+  </binding>
+  <service name="EHS_SOAP_Service">
+    <port name="ErrorHandlerPort"
+          binding="tns:ErrorHandlerPortTypeSOAP12Binding">
+      <soap12:address location="http://localhost:8081/EHSSoapService"/>
+    </port>
+  </service>
+</definitions>

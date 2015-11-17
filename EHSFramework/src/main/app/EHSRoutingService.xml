@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:jbossts="http://www.mulesoft.org/schema/mule/jbossts" xmlns:mulexml="http://www.mulesoft.org/schema/mule/xml" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:cxf="http://www.mulesoft.org/schema/mule/cxf" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns:context="http://www.springframework.org/schema/context" xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:spring="http://www.springframework.org/schema/beans"  version="CE-3.7.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/jbossts http://www.mulesoft.org/schema/mule/jbossts/current/mule-jbossts.xsd
+http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/current/mule-xml.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/cxf http://www.mulesoft.org/schema/mule/cxf/current/mule-cxf.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+    <mulexml:namespace-manager includeConfigNamespaces="true">  
+        <mulexml:namespace prefix="soapenv" uri="http://schemas.xmlsoap.org/soap/envelope/"/>  
+        <mulexml:namespace uri="xmlns.services.errorhandler/FaultSchema.xsd" prefix="fault"/> 
+    </mulexml:namespace-manager>
+    <jms:weblogic-connector name="Web_logic_JMS" username="${WeblogicJMSUsername}" password="${WeblogicJMSPassword}" validateConnections="true" jndiInitialFactory="weblogic.jndi.WLInitialContextFactory" jndiProviderUrl="${JMSProviderURL}" connectionFactoryJndiName="${JMSConnectionFactoryJndiName}" jndiDestinations="true" doc:name="Web logic JMS"/>
+    <db:oracle-config name="Oracle_Configuration" host="${dbHost}" port="${dbPort}" instance="${dbInstance}" user="${dbUser}" password="${dbPassword}" useXaTransactions="true" doc:name="Oracle Configuration"/>
+    <http:listener-config name="HTTP_Listener_Configuration" host="${httpHost}" port="${httpPort}" doc:name="HTTP Listener Configuration"/>
+    <cxf:configuration name="CXF_Configuration" enableMuleSoapHeaders="true" initializeStaticBusInstance="true" doc:name="CXF Configuration"/>
+    <mulexml:jaxb-context name="JAXB_Context" packageNames="errorhandler.services.xmlns.faultschema" doc:name="JAXB Context"/>
+    <context:property-placeholder location="${mule.env}.properties"/>
+    <smtp:connector name="SMTP" validateConnections="false" doc:name="SMTP"/>
+    <flow name="EHSRoutingServiceFlow">
+        <composite-source doc:name="Composite Source">
+            <jms:inbound-endpoint queue="${JMSRoutingQueue}" connector-ref="Web_logic_JMS" doc:name="JMS_ReceiveRequest">
+                <xa-transaction action="NONE"/>
+            </jms:inbound-endpoint>
+            <http:listener config-ref="HTTP_Listener_Configuration" path="/restservice" doc:name="HTTP_ReceiveRequestClient"/>
+        </composite-source>
+        <set-variable variableName="InputRequest" value="#[payload]" doc:name="SetVariable_InputRequest"/>
+        <flow-ref name="CheckSender_Subflow" doc:name="CheckSender_Subflow"/>
+        <catch-exception-strategy doc:name="Catch Exception Strategy">
+            <set-attachment attachmentName="RequestMessage.txt" value="#[flowVars['InputRequest']]" contentType="text/plain" doc:name="Attachment_Payload"/>
+            <set-payload value="Error Occured in Error Handling Service. PFA the request." doc:name="Set Payload"/>
+            <smtp:outbound-endpoint host="${smtpHost}" connector-ref="SMTP" to="${smtpTo}" from="${smtpFrom}" subject="Error Occured in EHSRoutingService" responseTimeout="10000" doc:name="SMTP"/>
+        </catch-exception-strategy>
+    </flow>
+    <flow name="EHSRoutingServiceFlow_SOAPFlow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/soapservice" doc:name="HTTP_ReceiveRequestFromSOAP"/>
+        <set-variable variableName="InputRequest" value="#[payload]" doc:name="SetVariable_InputRequest"/>
+        <cxf:proxy-service configuration-ref="CXF_Configuration" port="EHServicePortTypePort" namespace="xmlns.services.errorhandler/FaultSchema.xsd" service="EHServicePortType" payload="body" wsdlLocation="EHService.wsdl" doc:name="proxy service"/>
+        <mulexml:dom-to-xml-transformer doc:name="DOM to XML"/>
+        <flow-ref name="CheckSender_Subflow" doc:name="CheckSender_Subflow"/>
+        <catch-exception-strategy doc:name="Catch Exception Strategy">
+            <set-attachment attachmentName="RequestMessage.txt" value="#[flowVars['InputRequest']]" contentType="text/plain" doc:name="Attachment_Payload"/>
+            <set-payload value="Error Occured in Error Handling Service. PFA the request." doc:name="Set Payload"/>
+            <smtp:outbound-endpoint host="${smtpHost}" connector-ref="SMTP" to="${smtpTo}" from="${smtpFrom}" subject="Error Occured in EHSRoutingService" responseTimeout="10000" doc:name="SMTP"/>
+        </catch-exception-strategy>
+    </flow>
+    <sub-flow name="CheckSender_Subflow">
+        <choice doc:name="CheckSender">
+            <when expression="#[xpath3('//*[local-name() =\'Sender\']/text()') == 'Sender6']">
+                <jms:outbound-endpoint queue="${JMSErrorRequestQueue}" connector-ref="Web_logic_JMS" doc:name="JMS_PublishRequest">
+                    <xa-transaction action="NONE"/>
+                </jms:outbound-endpoint>
+            </when>
+            <otherwise>
+                <logger message="In Default" level="INFO" doc:name="OtherwiseLog"/>
+            </otherwise>
+        </choice>
+    </sub-flow>
+</mule>

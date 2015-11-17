@@ -1,0 +1,85 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<jdevws:WebService xmlns:jdevws="http://xmlns.oracle.com/jdeveloper/10130/webservice">
+   <list n="CHILD_NODES">
+      <url path="../../../../errorhandler/services/xmlns/faultschema/ObjectFactory.java"/>
+      <url path="../../../../errorhandler/services/xmlns/faultschema/FaultSchemaType.java"/>
+      <url path="../../../../errorhandler/services/xmlns/faultschema/Header.java"/>
+      <url path="../../../../errorhandler/services/xmlns/faultschema/FaultService.java"/>
+      <url path="../../../../errorhandler/services/xmlns/faultschema/FaultNotification.java"/>
+      <url path="../../../../errorhandler/services/xmlns/faultschema/package-info.java"/>
+      <url path="../../../../errorhandler/services/xmlns/faultschema/FaultMessage.java"/>
+      <url path="EHServicePortType.java"/>
+      <url path="EHServicePortTypeImpl.java"/>
+   </list>
+   <hash n="DATA_MODEL">
+      <value n="ATTACHMENT_ENCODING" v="MTOM"/>
+      <list n="BD_">
+         <hash>
+            <value n="BD_DEFAULT_DOCUMENT_WRAPPED" v="false"/>
+            <value n="BOUND_PORT_TYPE" v="{xmlns.services.errorhandler/FaultSchema.xsd}EHServicePortType"/>
+            <value n="DEFAULT_NAME" v="false"/>
+            <value n="MODEL_CLASS" v="oracle.jdeveloper.webservices.model.SOAPBinding"/>
+            <value n="NAME" v="{xmlns.services.errorhandler/FaultSchema.xsd}EHServicePortTypeSOAP11Binding"/>
+            <list n="OP_BINDINGS">
+               <hash>
+                  <value n="BOUND_OPERATION" v="void.logFaultMsg.javax.xml.ws.Holder&lt;errorhandler.services.xmlns.faultschema.FaultSchemaType>"/>
+                  <value n="MODEL_CLASS" v="oracle.jdeveloper.webservices.model.SOAPOperationBinding"/>
+                  <hash n="PROPERTY_GROUPS"/>
+               </hash>
+            </list>
+            <hash n="PROPERTY_GROUPS"/>
+         </hash>
+      </list>
+      <list n="BINDING_FILES"/>
+      <list n="GENERATED_FILES"/>
+      <value n="GENERATION_OPTION" v="ANNOTATIONS_SEI"/>
+      <value n="GUID" v="16b16740-014f-1000-800d-ac124fb7ab93"/>
+      <value n="MODEL_CLASS" v="oracle.jdeveloper.webservices.model.java.JavaWebService"/>
+      <list n="PO_">
+         <hash>
+            <value n="DEFAULT_NAME" v="false"/>
+            <value n="MODEL_CLASS" v="oracle.jdeveloper.webservices.model.SOAPPort"/>
+            <value n="NAME" v="EHServicePortTypePort"/>
+            <value n="PORT_BINDING_NAME" v="{xmlns.services.errorhandler/FaultSchema.xsd}EHServicePortTypeSOAP11Binding"/>
+            <list n="PORT_OPS">
+               <hash>
+                  <value n="EXPOSED_BD_OPERATION" v="void.logFaultMsg.javax.xml.ws.Holder&lt;errorhandler.services.xmlns.faultschema.FaultSchemaType>"/>
+                  <value n="MODEL_CLASS" v="oracle.jdeveloper.webservices.model.PortOperation"/>
+                  <hash n="PROPERTY_GROUPS"/>
+               </hash>
+            </list>
+            <hash n="PROPERTY_GROUPS"/>
+            <url n="URL" protocol="http" host="localhost" port="8080" path="/services/EHSService"/>
+         </hash>
+      </list>
+      <hash n="PROPERTY_GROUPS">
+         <hash n="ADD_ANNOTATIONS">
+            <value n="MODEL_CLASS" v="oracle.jdeveloper.webservices.model.java.AnnotationProperties"/>
+         </hash>
+         <hash n="WSDL_TO_JAVA_PROPERTIES">
+            <value n="MODEL_CLASS" v="oracle.jdeveloper.webservices.model.java.WSDLToJavaProperties"/>
+            <value n="WSDL2JAVA_DEFAULT_PACKAGE" v="com.Infogain.EHS"/>
+            <value n="WSDL2JAVA_UNWRAP_PARAMETERS" v="false"/>
+         </hash>
+      </hash>
+      <list n="PT_">
+         <hash>
+            <value n="AUTO_SERVICE_INTERFACE"/>
+            <value n="DEFAULT_NAME" v="false"/>
+            <value n="MODEL_CLASS" v="oracle.jdeveloper.webservices.model.java.JavaPortType"/>
+            <value n="NAME" v="{xmlns.services.errorhandler/FaultSchema.xsd}EHServicePortType"/>
+            <hash n="PROPERTY_GROUPS"/>
+            <value n="PT_CLASS" v="com.Infogain.EHS.EHServicePortTypeImpl"/>
+            <value n="PT_SERVICE_INTERFACE" v="com.Infogain.EHS.EHServicePortType"/>
+         </hash>
+      </list>
+      <value n="SERVICE_ASYNC" v="false"/>
+      <url n="TARGET_PROJECT" path="../../../../../JAX_Test.jpr"/>
+      <value n="TOPDOWN_GENERATION_OPTION" v="JAVA_SEI"/>
+      <value n="WS_ORIG_GEN_DIRECTION" v="TOP_DOWN"/>
+      <url n="WS_REFERENCE_WSDL" path="../../../../../EHService.wsdl"/>
+      <value n="WS_TARGET_NAMESPACE" v="xmlns.services.errorhandler/FaultSchema.xsd"/>
+      <value n="WS_URI" v="EHServicePortType"/>
+      <url n="WS_WSDL_FILE" path="../../../../../EHService.wsdl"/>
+   </hash>
+</jdevws:WebService>
