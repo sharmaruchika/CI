@@ -1,0 +1,546 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns:mulexml="http://www.mulesoft.org/schema/mule/xml" xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp" xmlns:ftp="http://www.mulesoft.org/schema/mule/ftp" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
+	xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" version="CE-3.7.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ftp http://www.mulesoft.org/schema/mule/ftp/current/mule-ftp.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/current/mule-xml.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd">
+    <db:oracle-config name="Oracle_Configuration" host="172.18.79.47" port="1521" instance="XE" user="soauser" password="welcome1" doc:name="Oracle Configuration">
+        <reconnect frequency="1000000"/>
+    </db:oracle-config>
+    <http:listener-config name="HTTP_Listener_Configuration" host="172.18.79.138" port="8081" doc:name="HTTP Listener Configuration"/>
+    <file:connector name="File" autoDelete="true" streaming="true" validateConnections="true" doc:name="File"/>
+    <ftp:connector name="FTP" pollingFrequency="1000" validateConnections="true" doc:name="FTP"/>
+    <smtp:connector name="SMTP" validateConnections="true" doc:name="SMTP"/>
+    <http:request-config name="HTTP_Request_Configuration" host="172.18.79.138" port="8082" doc:name="HTTP Request Configuration"/>
+    <http:request-config name="HTTP_Request_Configuration1" host="172.18.79.138" port="8083" doc:name="HTTP Request Configuration"/>
+    <sftp:connector name="SFTP" validateConnections="true" doc:name="SFTP"/>
+   <!--  <mulexml:jaxb-context name="JAXB_Context" packageNames="test" doc:name="JAXB Context"/>  -->
+    <flow name="fdsprototypeFlow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/" doc:name="HTTP"/>
+        <set-payload value="#[message.payload]" doc:name="Set Payload"/>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+
+        <set-variable variableName="Transactionid" value="#[xpath3('//*[local-name() =\'transactionid\']/text()')]" doc:name="Variable"/>
+        <logger message="#[flowVars['Transactionid']]" level="INFO" doc:name="Logger"/>
+        <response>
+            <logger message="Successfully Updated." level="INFO" doc:name="Logger"/>
+        </response>
+        <set-session-variable variableName="exception" value="" doc:name="Session Variable"/>
+        <response>
+            <set-payload value="'Sucessfully Updated.'" doc:name="Set Payload"/>
+        </response>
+        <response>
+            <db:update config-ref="Oracle_Configuration" doc:name="Database">
+                <db:dynamic-query><![CDATA[UPDATE fds_task_status_tbl set status='success', file_name='#[sessionVars.fileName]',updated_time_stamp=(select systimestamp from dual) where trans_id='#[flowVars['Transactionid']]']]></db:dynamic-query>
+            </db:update>
+        </response>
+
+       <!--  <splitter expression="#[message.payload]" doc:name="Splitter"/> -->
+        <db:select config-ref="Oracle_Configuration" doc:name="Database">
+            <db:dynamic-query><![CDATA[Select STATUS, ((Select EXTRACT(DAY FROM (select systimestamp from dual)- (select updated_time_stamp from fds_task_status_tbl WHERE trans_id='#[flowVars['Transactionid']]'))*24*60*60+
+EXTRACT(HOUR FROM (select systimestamp from dual)- (select updated_time_stamp from fds_task_status_tbl WHERE trans_id='#[flowVars['Transactionid']]'))*60*60+
+EXTRACT(MINUTE FROM (select systimestamp from dual)- (select updated_time_stamp from fds_task_status_tbl WHERE trans_id='#[flowVars['Transactionid']]'))*60+
+EXTRACT(SECOND FROM (select systimestamp from dual)- (select updated_time_stamp from fds_task_status_tbl WHERE trans_id='#[flowVars['Transactionid']]'))
+from dual) - (select sum(TRANSTIME_IN_SEC) from TRANSACTIONDETAILTABLE where TRANSACTIONID='#[flowVars['Transactionid']]' group by TRANSACTIONID))   as timediff from FDS_TASK_STATUS_TBL where TRANS_ID='#[flowVars['Transactionid']]']]></db:dynamic-query>
+        </db:select>
+        <choice doc:name="Choice">
+            <when expression="#[message.payload.isEmpty() !='true' &amp;&amp; (message.payload.get(0).get('STATUS') == 'success' || message.payload.get(0).get('STATUS') == 'failed')]">
+                <logger level="INFO" doc:name="Logger_Success" message="Logger_Success"/>
+                <db:update config-ref="Oracle_Configuration" doc:name="Database">
+                    <db:dynamic-query><![CDATA[update fds_task_status_tbl set STATUS='started' where TRANS_ID='#[flowVars['Transactionid']]']]></db:dynamic-query>
+                </db:update>
+                <flow-ref name="OperationSub_Flow" doc:name="OperationSub_Flow_1"/>
+            </when>
+            <when expression="#[message.payload.isEmpty() !='true' &amp;&amp; message.payload.get(0).get('STATUS') == 'started' &amp;&amp; message.payload.get(0).get('TIMEDIFF') &gt;0]">
+                <logger level="INFO" doc:name="Logger_TimeOut" message="Logger_TimeOut"/>
+                <db:update config-ref="Oracle_Configuration" doc:name="Database">
+                    <db:dynamic-query><![CDATA[update fds_task_status_tbl set STATUS='failed' where TRANS_ID='#[flowVars['Transactionid']]']]></db:dynamic-query>
+                </db:update>
+                <flow-ref name="OperationSub_Flow" doc:name="OperationSub_Flow"/>
+            </when>
+            <when expression="#[message.payload.isEmpty() !='true' &amp;&amp; message.payload.get(0).get('STATUS') == 'started' &amp;&amp; message.payload.get(0).get('TIMEDIFF') &lt;0]">
+                <logger message="Flow Terminated" level="INFO" doc:name="Logger_Terminated"/>
+            </when>
+            <otherwise>
+                <logger level="INFO" doc:name="Logger_Default" message="Flow terminate since duration Gap is less than 50 Sec."/>
+                <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                    <db:dynamic-query><![CDATA[Insert into fds_task_status_tbl values ('#[flowVars['Transactionid']]','xyz.txt',10,'started',(select systimestamp from dual),(select systimestamp from dual),'ORACLE','ORACLE')]]></db:dynamic-query>
+                </db:insert>
+                <flow-ref name="OperationSub_Flow" doc:name="OperationSub_Flow"/>
+            </otherwise>
+        </choice>
+        <catch-exception-strategy doc:name="Catch Exception Strategy">
+            <set-payload value="For TransactionId #[flowVars['Transactionid']]      #[(exception.cause!=null)?(exception.cause.message):exception]" doc:name="Set Payload"/>
+            <smtp:outbound-endpoint host="NODMX.igglobal.com" user="maneesha" password="domain789)" connector-ref="SMTP" to="Maneesha@infogain.com" from="Maneesha@infogain.com" subject="Exception Occured in FDS" responseTimeout="10000" doc:name="SMTP"/>
+            <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                <db:dynamic-query><![CDATA[INSERT INTO TRANSACTION_LOG_TBL VALUES ('#[flowVars['Transactionid']]', (select systimestamp from dual),'FAILED','#[sessionVars.STEP_ID]')]]></db:dynamic-query>
+            </db:insert>
+            <db:update config-ref="Oracle_Configuration" doc:name="Database">
+                <db:dynamic-query><![CDATA[UPDATE fds_task_status_tbl set status='failed', file_name='#[sessionVars.fileName]',updated_time_stamp=(select systimestamp from dual) where trans_id='#[flowVars['Transactionid']]']]></db:dynamic-query>
+            </db:update>
+        </catch-exception-strategy>
+
+    </flow>
+    <sub-flow name="OperationSub_Flow">
+        <db:select config-ref="Oracle_Configuration" doc:name="Database">
+            <db:dynamic-query><![CDATA[Select TRANSACTIONID,FILENAME,OPERATION,SOURCE,Target,ARCHIVE_ENABLE,ARCHIVE_DIR,ARCHIVE_FILENAME,FTP_HOST,FTP_PORT,USERNAME,PASSWORD,PGP_KEY_ID,PGP_KEY_PASSPHRASE,PGP_COMMAND,REMOVEFILE_FLAG,PGP_REMOVEFILE_FLAG,TRANSFER_PROTOCOL,PGP_ENABLED,STEP_ID from transactiondetailtable where TRANSACTIONID='#[flowVars['Transactionid']]' order by STEP_ID]]></db:dynamic-query>
+        </db:select>
+        <json:object-to-json-transformer doc:name="Object to JSON"/>
+        <set-payload value="{&quot;TransactionDetail&quot; : #[payload]}" doc:name="Set Payload"/>
+        <set-payload value="{&quot;TransactionDetails&quot; : #[payload]}" doc:name="Set Payload"/>
+        <json:json-to-xml-transformer doc:name="JSON to XML"/>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+        <foreach collection="#[xpath3('//TransactionDetails/*', message.payload, 'NODESET')]" rootMessageVariableName="root" doc:name="For Each">
+            <choice doc:name="Choice">
+                <when expression="#[xpath3('./OPERATION/text()')=='GET']">
+                    <logger message="Get::::  #[xpath3('.')]" level="INFO" doc:name="Logger_get"/>
+                    <message-properties-transformer scope="session" doc:name="Message Properties">
+                        <add-message-property key="Source" value="#[xpath3('./SOURCE/text()')]"/>
+                        <add-message-property key="target" value="#[xpath3('./TARGET/text()')]"/>
+                        <add-message-property key="fileName" value="#[xpath3('./FILENAME/text()')]"/>
+                        <add-message-property key="ARCHIVE_ENABLE" value="#[xpath3('./ARCHIVE_ENABLE/text()')]"/>
+                        <add-message-property key="ARCHIVE_DIR" value="#[xpath3('./ARCHIVE_DIR/text()')]"/>
+                        <add-message-property key="FTP_HOST" value="#[xpath3('./FTP_HOST/text()')]"/>
+                        <add-message-property key="USERNAME" value="#[xpath3('./USERNAME/text()')]"/>
+                        <add-message-property key="PASSWORD" value="#[xpath3('./PASSWORD/text()')]"/>
+                        <add-message-property key="Passphrase" value="#[xpath3('./PGP_KEY_PASSPHRASE/text()')]"/>
+                        <add-message-property key="FTP_PORT" value="#[xpath3('./FTP_PORT/text()')]"/>
+                        <add-message-property key="ARCHIVE_FILENAME" value="#[xpath3('./ARCHIVE_FILENAME/text()')]"/>
+                        <add-message-property key="PGP_COMMAND" value="#[xpath3('./PGP_COMMAND/text()')]"/>
+                        <add-message-property key="REMOVEFILE_FLAG" value="#[xpath3('./REMOVEFILE_FLAG/text()')]"/>
+                        <add-message-property key="PGP_REMOVEFILE_FLAG" value="#[xpath3('./PGP_REMOVEFILE_FLAG/text()')]"/>
+                        <add-message-property key="TRANSFER_PROTOCOL" value="#[xpath3('./TRANSFER_PROTOCOL/text()')]"/>
+                        <add-message-property key="PGP_ENABLED" value="#[xpath3('./PGP_ENABLED/text()')]"/>
+                        <add-message-property key="STEP_ID" value="#[xpath3('./STEP_ID/text()')]"/>
+                    </message-properties-transformer>
+                    <flow-ref name="GET_SubFlow" doc:name="GET_SubFlow"/>
+                </when>
+                <when expression="#[xpath3('./OPERATION/text()')=='PUT' ]">
+                    <logger message="Put::: #[xpath3('.')]" level="INFO" doc:name="Logger_put"/>
+                    <message-properties-transformer scope="session" doc:name="Message Properties">
+                        <add-message-property key="Source" value="#[xpath3('./SOURCE/text()')]"/>
+                        <add-message-property key="Target" value="#[xpath3('./TARGET/text()')]"/>
+                        <add-message-property key="fileName" value="#[xpath3('./FILENAME/text()')]"/>
+                        <add-message-property key="FTP_HOST" value="#[xpath3('./FTP_HOST/text()')]"/>
+                        <add-message-property key="USERNAME" value="#[xpath3('./USERNAME/text()')]"/>
+                        <add-message-property key="PASSWORD" value="#[xpath3('./PASSWORD/text()')]"/>
+                        <add-message-property key="KEY_ID" value="#[xpath3('./PGP_KEY_ID/text()')]"/>
+                        <add-message-property key="FTP_PORT" value="#[xpath3('./FTP_PORT/text()')]"/>
+                        <add-message-property key="PGP_COMMAND" value="#[xpath3('./PGP_COMMAND/text()')]"/>
+                        <add-message-property key="PGP_REMOVEFILE_FLAG" value="#[xpath3('./PGP_REMOVEFILE_FLAG/text()')]"/>
+                        <add-message-property key="TRANSFER_PROTOCOL" value="#[xpath3('./TRANSFER_PROTOCOL/text()')]"/>
+                        <add-message-property key="ARCHIVE_ENABLE" value="#[xpath3('./ARCHIVE_ENABLE/text()')]"/>
+                        <add-message-property key="ARCHIVE_DIR" value="#[xpath3('./ARCHIVE_DIR/text()')]"/>
+                        <add-message-property key="ARCHIVE_FILENAME" value="#[xpath3('./ARCHIVE_FILENAME/text()')]"/>
+                        <add-message-property key="PGP_ENABLED" value="#[xpath3('./PGP_ENABLED/text()')]"/>
+                        <add-message-property key="STEP_ID" value="#[xpath3('./STEP_ID/text()')]"/>
+                    </message-properties-transformer>
+                    <flow-ref name="PUT_SubFlow" doc:name="PUT_Subflow"/>
+                </when>
+                <otherwise>
+                    <logger message="Reject" level="INFO" doc:name="Logger_Reject"/>
+                </otherwise>
+            </choice>
+        </foreach>
+    </sub-flow>
+    <sub-flow name="GET_SubFlow">
+        <set-payload value="#[payload]" doc:name="Set Payload"/>
+        <choice doc:name="Choice">
+            <when expression="#[sessionVars.TRANSFER_PROTOCOL=='SFTP']">
+                <scripting:component doc:name="Copying the Source File for SFTP">
+                    <scripting:script engine="Groovy"><![CDATA[import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
+import org.mule.api.MuleEventContext;
+import org.mule.api.lifecycle.Callable;
+
+import org.apache.commons.net.ftp.FTP;
+import org.apache.commons.net.ftp.FTPClient;
+import com.jcraft.jsch.*;
+import test.MyUserInfo;
+import org.mule.api.transport.PropertyScope;
+
+import java.util.Properties;
+
+		def server = sessionVars.FTP_HOST
+        def port = sessionVars.FTP_PORT as int
+        def user = sessionVars.USERNAME
+        def pass = sessionVars.PASSWORD
+ 
+        
+			
+			def Target = sessionVars.target 
+			def Source = sessionVars.Source
+			def file = sessionVars.fileName
+			def ARCHIVE_ENABLE=sessionVars.ARCHIVE_ENABLE
+			def ARCHIVE_DIR=sessionVars.ARCHIVE_DIR
+			def ARCHIVE_FILENAME=sessionVars.ARCHIVE_FILENAME
+			def REMOVEFILE_FLAG=sessionVars.REMOVEFILE_FLAG
+			
+			println Source
+			println file
+			def remoteFile1 = Source + '/' + file;
+			def archiveFile1 = ARCHIVE_DIR+'/' + ARCHIVE_FILENAME
+            File downloadFile1 = new File(Target +'/'+ file);
+			println remoteFile1
+			println downloadFile1
+            
+			
+			
+						
+			
+			
+			
+			def SFTPHOST = server;
+def    SFTPPORT = port;
+def SFTPUSER = user;
+def SFTPPASS = pass;
+def SFTPWORKINGDIR = Source;
+
+Session session = null;
+Channel channel = null;
+ChannelSftp channelSftp = null;
+
+
+JSch jsch = new JSch();
+session = jsch.getSession(SFTPUSER,SFTPHOST,SFTPPORT);
+session.setPassword(SFTPPASS);
+java.util.Properties config = new java.util.Properties();
+config.put("StrictHostKeyChecking", "no");
+session.setConfig(config);
+session.connect();
+channel = session.openChannel("sftp");
+channel.connect();
+channelSftp = (ChannelSftp)channel;
+channelSftp.cd(SFTPWORKINGDIR);
+byte[] buffer = new byte[1024];
+BufferedInputStream bis = new BufferedInputStream(channelSftp.get(remoteFile1));
+File newFile = new File(Target +'/'+ file);
+OutputStream os = new FileOutputStream(newFile);
+BufferedOutputStream bos = new BufferedOutputStream(os);
+int readCount;
+//System.out.println("Getting: " + theLine);
+while( (readCount = bis.read(buffer)) > 0) {
+System.out.println("Writing: " );
+bos.write(buffer, 0, readCount);
+}
+bis.close();
+bos.close();
+
+if (ARCHIVE_ENABLE=='Y') {	
+channelSftp.rename(remoteFile1,archiveFile1);
+ println "File archived"
+} else if (REMOVEFILE_FLAG=='Y')
+{channelSftp.rm(remoteFile1);
+  println "File removed"
+}
+			
+channel.disconnect();
+]]></scripting:script>
+                </scripting:component>
+            </when>
+            <otherwise>
+                <scripting:component doc:name="Copying the source file for FTP">
+                    <scripting:script engine="Groovy"><![CDATA[import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
+import org.mule.api.MuleEventContext;
+import org.mule.api.lifecycle.Callable;
+
+import org.apache.commons.net.ftp.FTP;
+import org.apache.commons.net.ftp.FTPClient;
+
+System.gc()
+
+		def server = sessionVars.FTP_HOST
+        def port = sessionVars.FTP_PORT as int
+        def user = sessionVars.USERNAME
+        def pass = sessionVars.PASSWORD
+ 
+        FTPClient ftpClient = new FTPClient();
+		ftpClient.connect(server, port);
+            ftpClient.login(user, pass);
+            ftpClient.enterLocalPassiveMode();
+            ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
+			
+			def Target = sessionVars.target 
+			def Source = sessionVars.Source
+			def file = sessionVars.fileName
+			def ARCHIVE_ENABLE=sessionVars.ARCHIVE_ENABLE
+			def ARCHIVE_DIR=sessionVars.ARCHIVE_DIR
+			def ARCHIVE_FILENAME=sessionVars.ARCHIVE_FILENAME
+			def REMOVEFILE_FLAG=sessionVars.REMOVEFILE_FLAG
+			
+			println Source
+			println file
+			def remoteFile1 = Source + '/' + file;
+			def archiveFile1 = ARCHIVE_DIR+'/' + ARCHIVE_FILENAME
+            File downloadFile1 = new File(Target +'/'+ file);
+			println remoteFile1
+			println downloadFile1
+            /*OutputStream outputStream1 = new BufferedOutputStream(new FileOutputStream(downloadFile1));
+            
+            boolean success = ftpClient.retrieveFile(remoteFile1, outputStream1);
+            
+ 
+            if (success) {
+                println "File #1 has been downloaded successfully."
+				
+            }*/
+			
+			if (ARCHIVE_ENABLE=='Y') {
+			
+			//def ArchCommand="mv"+" "+Source+"/"+file+" "+ARCHIVE_DIR+"/"+ARCHIVE_FILENAME;
+			//println ArchCommand
+			//ArchCommand.execute();
+			
+			ftpClient.rename(remoteFile1, archiveFile1)
+			
+			println "File archived"
+			
+			}
+			
+			else if (REMOVEFILE_FLAG=='Y') {
+			
+			ftpClient.deleteFile(remoteFile1)
+			println "File removed"
+			
+			}
+            
+			//outputStream1.close();
+]]></scripting:script>
+                </scripting:component>
+            </otherwise>
+        </choice>
+
+
+        <!-- <choice doc:name="Choice">
+            <when expression="#[sessionVars.ARCHIVE_ENABLE=='Y']">
+                <component class="test.ConnectLinuxBox" doc:name="Archiving the Source file"/>
+            </when>
+            <otherwise>
+                <scripting:component doc:name="Deleting the Source File">
+                    <scripting:script engine="Groovy"><![CDATA[import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
+import org.mule.api.MuleEventContext;
+import org.mule.api.lifecycle.Callable;
+
+import org.apache.commons.net.ftp.FTP;
+import org.apache.commons.net.ftp.FTPClient;
+
+
+
+		def server = sessionVars.FTP_HOST
+        def port = sessionVars.FTP_PORT as int
+        def user = sessionVars.USERNAME
+        def pass = sessionVars.PASSWORD
+ 
+        FTPClient ftpClient = new FTPClient();
+		ftpClient.connect(server, port);  //  
+            ftpClient.login(user, pass);
+            ftpClient.enterLocalPassiveMode();
+            ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
+			
+			def Target = sessionVars.target 
+			def Source = sessionVars.Source
+			def file = sessionVars.fileName
+			def ARCHIVE_ENABLE=sessionVars.ARCHIVE_ENABLE
+			def ARCHIVE_DIR=sessionVars.ARCHIVE_DIR
+			
+			println Source
+			println file
+			def remoteFile1 = Source + '/' + file;
+			ftpClient.deleteFile(remoteFile1)
+            ]]></scripting:script>
+                </scripting:component>
+            </otherwise>
+        </choice> -->
+        <set-payload value="&lt;inputVariable&gt;&lt;part  name=&quot;payload&quot;&gt;&lt;FILE_TRANSFER&gt;&lt;SOURCE_DIR&gt;#[sessionVars.target]&lt;/SOURCE_DIR&gt;&lt;GPG_SOURCE_FILENAME&gt;#[sessionVars.fileName]&lt;/GPG_SOURCE_FILENAME&gt;&lt;GPG_KEY_PASSPHRASE&gt;#[sessionVars.Passphrase]&lt;/GPG_KEY_PASSPHRASE&gt;&lt;PGP_COMMAND&gt;#[sessionVars.PGP_COMMAND]&lt;/PGP_COMMAND&gt;&lt;PGP_REMOVEFILE_FLAG&gt;#[sessionVars.PGP_REMOVEFILE_FLAG]&lt;/PGP_REMOVEFILE_FLAG&gt;&lt;/FILE_TRANSFER&gt;&lt;/part&gt;&lt;/inputVariable&gt;" doc:name="Set Payload"/>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+        <choice doc:name="Choice">
+            <when expression="#[sessionVars.PGP_ENABLED=='Y']">
+                <http:request config-ref="HTTP_Request_Configuration1" path="decryption" method="POST" doc:name="HTTP"/>
+            </when>
+            <otherwise>
+                <logger message="Decryption not enabled" level="INFO" doc:name="Logger"/>
+            </otherwise>
+        </choice>
+        <message-properties-transformer scope="session" doc:name="Message Properties">
+            <add-message-property key="Operation" value="GET"/>
+            <add-message-property key="Email_Subject" value="File Downloaded Successfully"/>
+        </message-properties-transformer>
+        <flow-ref name="SMTPSub_Flow" doc:name="SMTPSub_Flow"/>
+        
+      <!--   <set-property propertyName="Target" value="#[xpath3('//*[local-name() =\'SOURCE\']/text()')]" doc:name="Property"/>  
+        <logger message="GET FLOW::: #[message.payload]" level="INFO" doc:name="Logger"/>
+        <choice doc:name="Choice">
+            <when expression="#[message.payload != null]">
+                <file:outbound-endpoint path="#[flowVars[&quot;target&quot;]]" outputPattern="#[flowVars[&quot;fileName&quot;]]" connector-ref="File" responseTimeout="10000" doc:name="File"/>
+            </when>
+            <otherwise>
+                <logger message="::::Default::::" level="INFO" doc:name="Logger"/>
+            </otherwise>
+        </choice> -->
+    </sub-flow>
+    <sub-flow name="SMTPSub_Flow">
+        <db:select config-ref="Oracle_Configuration" doc:name="Database">
+            <db:dynamic-query><![CDATA[select success_flag,email_to from fds_notification_config_tbl where transactionid='#[flowVars['Transactionid']]']]></db:dynamic-query>
+
+        </db:select>
+        <json:object-to-json-transformer doc:name="Object to JSON"/>
+        <set-payload value="{&quot;NotificationDetail&quot; : #[payload]}" doc:name="Set Payload"/>
+        <json:json-to-xml-transformer doc:name="JSON to XML"/>
+        <message-properties-transformer scope="session" doc:name="Message Properties">
+            <add-message-property key="SUCCESS_FLAG" value="#[xpath3('//*[local-name() =\'SUCCESS_FLAG\']/text()')]"/>
+
+            <add-message-property key="EMAIL_TO" value="#[xpath3('//*[local-name() =\'EMAIL_TO\']/text()')]"/>
+        </message-properties-transformer>
+        <choice doc:name="Choice">
+            <when expression="#[sessionVars.SUCCESS_FLAG=='Y']">
+                <set-payload value="Operation: #[sessionVars.Operation] Successful for Transaction Id: #[flowVars['Transactionid']]" doc:name="Set Payload"/>
+                <logger message="::::Sent mail.::::" level="INFO" doc:name="Logger_SMTP"/>
+                <smtp:outbound-endpoint host="NODMX.igglobal.com" user="maneesha" password="domain789)" connector-ref="SMTP" to="#[sessionVars.EMAIL_TO]" from="Maneesha@infogain.com" subject="#[sessionVars.Email_Subject]" responseTimeout="10000" doc:name="SMTP"/>
+                <db:insert config-ref="Oracle_Configuration" doc:name="Database">
+                    <db:dynamic-query><![CDATA[INSERT INTO TRANSACTION_LOG_TBL VALUES ('#[flowVars['Transactionid']]', (select systimestamp from dual),'SUCCESS','#[sessionVars.STEP_ID]')]]></db:dynamic-query>
+                </db:insert>
+            </when>
+            <otherwise>
+                <logger message="::::No Mail Sent:::::" level="INFO" doc:name="Logger"/>
+            </otherwise>
+        </choice>
+    </sub-flow>
+    
+     <sub-flow name="PUT_SubFlow">
+        <!-- <http:request config-ref="HTTP_Request_Configuration1" path="\encryption" method="POST" doc:name="HTTP"/> -->
+        <set-payload value="&lt;inputVariable&gt;&lt;part  name=&quot;payload&quot;&gt;&lt;FILE_TRANSFER&gt;&lt;SOURCE_DIR&gt;#[sessionVars.Source]&lt;/SOURCE_DIR&gt;&lt;TARGET_DIR&gt;#[sessionVars.target]&lt;/TARGET_DIR&gt;&lt;SOURCE_FILENAME&gt;#[sessionVars.fileName]&lt;/SOURCE_FILENAME&gt;&lt;GPG_KEY_ID&gt;#[sessionVars.KEY_ID]&lt;/GPG_KEY_ID&gt;&lt;PGP_COMMAND&gt;#[sessionVars.PGP_COMMAND]&lt;/PGP_COMMAND&gt;&lt;/FILE_TRANSFER&gt;&lt;/part&gt;&lt;/inputVariable&gt;" doc:name="Set Payload"/>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+        <choice doc:name="Choice">
+            <when expression="#[sessionVars.PGP_ENABLED=='Y']">
+                <http:request config-ref="HTTP_Request_Configuration1" path="encryption" method="POST" doc:name="HTTP"/>
+                <mulexml:dom-to-xml-transformer doc:name="DOM to XML"/>
+                <set-session-variable variableName="TargetFileName" value="#[xpath3('//*[local-name() =\'TARGET_FILENAME\']/text()')]" doc:name="Session Variable"/>
+            </when>
+            <otherwise>
+                <set-session-variable variableName="TargetFileName" value="#[sessionVars.fileName]" doc:name="Session Variable"/>
+            </otherwise>
+        </choice>
+
+       
+         <scripting:component doc:name="Get File">                                        
+        <scripting:script engine="Groovy"><![CDATA[println 'I am in Put Subflow'
+System.gc()
+def Source = sessionVars.Source
+def file = sessionVars.TargetFileName
+def pgpRemoveFileFlag = sessionVars.PGP_REMOVEFILE_FLAG
+def ARCHIVE_ENABLE=sessionVars.ARCHIVE_ENABLE
+try {
+File f= new File(Source +'/'+ file)
+println sessionVars["Source"]
+println file
+
+//if(f.exists()){
+
+payload=f.getText('UTF-8')
+//println payload
+if(ARCHIVE_ENABLE == 'Y'){
+
+def ARCHIVE_DIR=sessionVars.ARCHIVE_DIR
+def ARCHIVE_FILENAME=sessionVars.ARCHIVE_FILENAME
+File f2 = new File(ARCHIVE_DIR+'/'+ARCHIVE_FILENAME)
+
+//def ArchCommand='cmd /c move E:\\gpg\\FDS\\test.gpg E:\\gpg\\FDS\\Mayank\\test.txt'
+def ArchCommand="cmd /c "+"move"+" "+f+" "+f2
+
+println 'ArchCommand :'+ArchCommand
+ArchCommand.execute()
+println 'After Archiving'
+
+}
+
+if(pgpRemoveFileFlag == 'Y'){
+
+def del = f.delete()
+println "File Deleted"
+
+
+}   
+return payload
+}
+
+catch(Exception e) {
+
+/*sessionVars.exception = e.getMessage() */
+throw e
+}		
+
+/*}
+else{
+
+println 'hi reached in'
+payload=null
+return payload
+}*/]]></scripting:script>
+    	</scripting:component>
+
+      <!--   <set-property propertyName="Target" value="#[xpath3('//*[local-name() =\'SOURCE\']/text()')]" doc:name="Property"/>  -->
+
+        <choice doc:name="Choice">
+            <when expression="#[message.payload != null]">
+                <logger message="::::::#[sessionVars.FTP_HOST]:::::::#[sessionVars.USERNAME]::::::#[sessionVars.PASSWORD]" level="INFO" doc:name="Logger_FTP"/>
+                <choice doc:name="Choice">
+                    <when expression="#[sessionVars.TRANSFER_PROTOCOL=='SFTP']">
+
+                        <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="SFTP" outputPattern="#[sessionVars.TargetFileName]" host="#[sessionVars.FTP_HOST]" port="#[sessionVars.FTP_PORT]" path="#[sessionVars.Target]" user="#[sessionVars.USERNAME]" password="#[sessionVars.PASSWORD]" responseTimeout="10000" doc:name="SFTP"/>
+                    </when>
+                    <otherwise>
+
+                        <ftp:outbound-endpoint connector-ref="FTP" host="#[sessionVars.FTP_HOST]" port="#[sessionVars.FTP_PORT]" path="#[sessionVars.Target]" user="#[sessionVars.USERNAME]" password="#[sessionVars.PASSWORD]" responseTimeout="10000" outputPattern="#[sessionVars.TargetFileName]" doc:name="FTP"/>
+                    </otherwise>
+                </choice>
+                <message-properties-transformer scope="session" doc:name="Message Properties">
+                    <add-message-property key="Operation" value="PUT"/>
+                    <add-message-property key="Email_Subject" value="File Uploaded Successfully"/>
+                </message-properties-transformer>
+
+                <flow-ref name="SMTPSub_Flow" doc:name="SMTPSub_Flow"/>
+
+
+                
+                
+
+            </when>
+            <otherwise>
+                <logger message="::::Default::::" level="INFO" doc:name="Logger"/>
+            </otherwise>
+        </choice>
+        <logger message="Message published successfully. " level="INFO" doc:name="Logger"/>
+    </sub-flow>
+</mule>

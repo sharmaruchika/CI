@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:mulexml="http://www.mulesoft.org/schema/mule/xml" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" version="CE-3.7.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/current/mule-xml.xsd">
+	<http:listener-config name="HTTP_Listener_Configuration_2"
+		host="172.18.79.138" port="8083" doc:name="HTTP Listener Configuration_2" />
+	<file:connector name="File_1"  outputPattern="#[flowVars.key]" autoDelete="true" streaming="true" validateConnections="true" doc:name="File"/>
+    <flow name="encryptionFlow">
+		<http:listener config-ref="HTTP_Listener_Configuration_2"
+			path="/encryption" doc:name="HTTP" />
+        <!-- <logger message="#[xpath3('//*[local-name() =\'SOURCE_DIR\']/text()')]" level="INFO" doc:name="Logger"/> -->
+        <mulexml:dom-to-xml-transformer doc:name="DOM to XML"/>
+	
+			<choice doc:name="Choice">
+				<when expression="#[xpath3('//*[local-name() =\'PGP_COMMAND\']/text()')=='']">
+					<logger message="Command is missing" level="INFO" doc:name="Logger" />
+                <set-payload value="&lt;outputVariable&gt;&lt;part  name=&quot;payload&quot;&gt;&lt;TaskUpdate&gt;&lt;TASK_STATUS&gt;FAILURE&lt;/TASK_STATUS&gt;&lt;UPDATED_TIME_STAMP&gt;#[server.dateTime]&lt;/UPDATED_TIME_STAMP&gt;&lt;/TaskUpdate&gt;&lt;/part&gt;&lt;/outputVariable&gt;" doc:name="Set Payload"/>
+				</when>
+				<otherwise>
+                <message-properties-transformer doc:name="Message Properties" scope="session">
+                    <add-message-property key="SourceDir" value="#[xpath3('//*[local-name() =\'SOURCE_DIR\']/text()')]"/>
+                    <add-message-property key="TargetDir" value="#[xpath3('//*[local-name() =\'TARGET_DIR\']/text()')]"/>
+                    <add-message-property key="SourceFilename" value="#[xpath3('//*[local-name() =\'SOURCE_FILENAME\']/text()')]"/>
+                    <add-message-property key="GPGKeyID" value="#[xpath3('//*[local-name() =\'GPG_KEY_ID\']/text()')]"/>
+                    <add-message-property key="PGPCommand" value="#[xpath3('//*[local-name() =\'PGP_COMMAND\']/text()')]"/>
+                </message-properties-transformer>
+                <scripting:transformer doc:name="Groovy">
+                    <scripting:script engine="Groovy"><![CDATA[def TargetDir= sessionVars.TargetDir
+
+def SourceFilename = sessionVars.SourceFilename
+
+def recipient = sessionVars.GPGKeyID
+
+def SourceDir = sessionVars.SourceDir
+
+GroovyShell shell = new GroovyShell()
+def script = shell.parse(new File(sessionVars.PGPCommand))
+println script
+
+
+def TargetFileName = script.encryption(TargetDir, SourceFilename, recipient, SourceDir)
+
+println "TargetFileName="+TargetFileName
+
+message.setInvocationProperty('TargetFileName', TargetFileName)]]></scripting:script>
+                </scripting:transformer>
+                <set-payload value="&lt;outputVariable&gt; &lt;part  name=&quot;payload&quot;&gt;&lt;TaskUpdate&gt;&lt;TASK_STATUS&gt;SUCCESS&lt;/TASK_STATUS&gt;&lt;UPDATED_TIME_STAMP&gt;#[server.dateTime]&lt;/UPDATED_TIME_STAMP&gt;&lt;TARGET_FILENAME&gt;#[flowVars.TargetFileName]&lt;/TARGET_FILENAME&gt;&lt;/TaskUpdate&gt;&lt;/part&gt;&lt;/outputVariable&gt;" doc:name="Set Payload"/>
+					<!-- <set-variable variableName="SourceDir"
+						value="#[xpath3('//*[local-name() =\'SOURCE_DIR\']/text()')]"
+						doc:name="SetVariable_SourceDir" />
+					<logger message="#[flowVars['SourceDir']]" level="INFO"
+						doc:name="Logger" />
+                <choice doc:name="Choice">
+                    <when expression="#[xpath3('//*[local-name() =\'TARGET_DIR\']/text()')=='']">
+                        <logger level="INFO" doc:name="Logger" message="Target Dir is null"/>
+                        <set-payload value="&lt;outputVariable&gt; &lt;part  name=&quot;payload&quot;&gt;&lt;TaskUpdate&gt;&lt;ns0:TASK_STATUS&gt;FAILURE&lt;/ns0:TASK_STATUS&gt;&lt;ns0:UPDATED_TIME_STAMP&gt;#[server.dateTime]&lt;/ns0:UPDATED_TIME_STAMP&gt;&lt;/TaskUpdate&gt;&lt;/part&gt;&lt;/outputVariable&gt;" doc:name="Set Payload"/>
+                    </when>
+                    <otherwise>
+                        <set-variable doc:name="SetVariable_TargetDir" value="#[xpath3('//*[local-name() =\'TARGET_DIR\']/text()')]" variableName="TargetDir"/>
+                        <logger level="INFO" doc:name="Logger" message="#[flowVars['TargetDir']]"/>
+                        <choice doc:name="Choice">
+                            <when expression="#[xpath3('//*[local-name() =\'SOURCE_FILENAME\']/text()')=='']">
+                                <logger message="Source Filename is null" level="INFO" doc:name="Logger"/>
+                                <set-payload value="&lt;outputVariable&gt; &lt;part  name=&quot;payload&quot;&gt;&lt;TaskUpdate&gt;&lt;ns0:TASK_STATUS&gt;FAILURE&lt;/ns0:TASK_STATUS&gt;&lt;ns0:UPDATED_TIME_STAMP&gt;#[server.dateTime]&lt;/ns0:UPDATED_TIME_STAMP&gt;&lt;/TaskUpdate&gt;&lt;/part&gt;&lt;/outputVariable&gt;" doc:name="Set Payload"/>
+                            </when>
+                            <otherwise>
+                                <set-variable variableName="SourceFilename" value="#[xpath3('//*[local-name() =\'SOURCE_FILENAME\']/text()')]" doc:name="SetVariable_SourceFilename"/>
+                                <logger message="#[flowVars['SourceFilename']]" level="INFO" doc:name="Logger"/>
+                                <choice doc:name="Choice">
+                                    <when expression="#[xpath3('//*[local-name() =\'GPG_KEY_ID\']/text()')=='']">
+                                        <logger message="GPG Key ID is null" level="INFO" doc:name="Logger"/>
+                                        <set-payload value="&lt;outputVariable&gt; &lt;part  name=&quot;payload&quot;&gt;&lt;TaskUpdate&gt;&lt;ns0:TASK_STATUS&gt;FAILURE&lt;/ns0:TASK_STATUS&gt;&lt;ns0:UPDATED_TIME_STAMP&gt;#[server.dateTime]&lt;/ns0:UPDATED_TIME_STAMP&gt;&lt;/TaskUpdate&gt;&lt;/part&gt;&lt;/outputVariable&gt;" doc:name="Set Payload"/>
+                                    </when>
+                                    <otherwise>
+                                        <set-variable variableName="GPGKeyID" value="#[xpath3('//*[local-name() =\'GPG_KEY_ID\']/text()')]" doc:name="SetVariable_GPGKeyID"/>
+                                        <logger message="#[flowVars['GPGKeyID']]" level="INFO" doc:name="Logger"/>
+                                        <scripting:component doc:name="Groovy">
+                                            <scripting:script engine="Groovy"><![CDATA[def TargetDir= flowVars.TargetDir
+
+def SourceFilename = flowVars.SourceFilename
+
+def recipient = flowVars.GPGKeyID
+
+def SourceDir = flowVars.SourceDir
+
+GroovyShell shell = new GroovyShell()
+def script = shell.parse(new File('E:\\gpg\\Encrypt.groovy'))
+println script
+script.encryption(TargetDir, SourceFilename, recipient, SourceDir)]]></scripting:script>
+                                        </scripting:component>
+                                        <set-payload value="&lt;outputVariable&gt; &lt;part  name=&quot;payload&quot;&gt;&lt;TaskUpdate&gt;&lt;ns0:TASK_STATUS&gt;SUCCESS&lt;/ns0:TASK_STATUS&gt;&lt;ns0:UPDATED_TIME_STAMP&gt;#[server.dateTime]&lt;/ns0:UPDATED_TIME_STAMP&gt;&lt;/TaskUpdate&gt;&lt;/part&gt;&lt;/outputVariable&gt;" doc:name="Set Payload"/>
+                                    </otherwise>
+                                </choice>
+                            </otherwise>
+                        </choice>
+                    </otherwise>
+                </choice> -->
+
+				</otherwise>
+			</choice>
+
+	</flow>
+     <flow name="simpletestFlow">
+        <http:listener config-ref="HTTP_Listener_Configuration_2" path="/file" doc:name="HTTP"/>
+        <logger  level="INFO" doc:name="Logger" message="#[flowVars.key]"/>
+         <logger level="INFO" doc:name="Logger" message="#[message.inboundProperties.'filename']"/>
+        <set-payload value="#[message.inboundAttachments.get('FileAtt').getInputStream()]" doc:name="Set Payload"/>
+              <byte-array-to-string-transformer doc:name="Byte Array to String"/>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+                <foreach collection="#[message.inboundAttachments]" doc:name="For Each">
+            <logger message="#[message.payload]" level="INFO" doc:name="Logger"/>
+            <file:outbound-endpoint  connector-ref="File" responseTimeout="10000" doc:name="File" path="E:\"/>
+        </foreach>
+      
+    </flow> 
+	
+</mule>
