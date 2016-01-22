@@ -94,7 +94,22 @@
   </dependency>
 
  </dependencies>
- 
+ <repositories>
+    <repository>
+        <id>mulesoft-releases</id>
+        <name>MuleSoft Repository</name>
+        <url>http://repository.mulesoft.org/releases/</url>
+        <layout>default</layout>
+    </repository>
+    <repository>
+        <id>mulesoft-snapshots</id>
+        <name>MuleSoft Snapshot Repository</name>
+        <url> http://mvnrepository.com/artifact/org.mule.modules/mule-modules-all</url>
+        <layout>default</layout>
+    </repository>
+
+</repositories>
+
 
  <pluginRepositories>
   <pluginRepository>
