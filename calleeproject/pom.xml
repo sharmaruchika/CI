@@ -36,14 +36,14 @@
    <version>1.6</version>
    <scope>provided</scope>
   </dependency>
-
+  <!--
   <dependency> 
             <groupId>com.oracle</groupId> 
             <artifactId>ojdbc5</artifactId> 
             <version>11.2.0</version> 
         </dependency>
   
-  <!-- Active MQ Dependency -->
+ Active MQ Dependency -->
   <dependency>
             <groupId>org.apache.activemq</groupId>
             <artifactId>activemq-client</artifactId>
