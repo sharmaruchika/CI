@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<project name="maven-antrun-" default="main"  >
+<target name="main">
+  <property name="build.compiler" value="extJavac"/>
+  <property name="compositeName" value="SimpleSOAProject"/>
+  <property name="compositeDir" value="E:\CI\CIRepo\CI\TestMavenApp\SimpleSOAProject"/>
+  <property name="revision" value="1.0-SNAPSHOT"/>
+  <ant antfile="E:/Oracle/Middleware7/jdeveloper/bin/ant-sca-package.xml" dir="E:/Oracle/Middleware7/jdeveloper/bin" target="package"/>
+</target>
+</project>
